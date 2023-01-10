@@ -11,6 +11,7 @@ To Do
 -Remove debugging stuff
 -Maybe it's possible to NOT start from scratch with each iteration? Irrelevant performance-wise unless board is very large.
 -Maybe make colors start from 0
+-For add_rect() use np.where() instead of double for loop? This will make the code more complex, as it will require first checking whether the tuple of result coordinate arrays has at least one element per array
 """
 
 import numpy as np
@@ -21,49 +22,46 @@ n_cols = 9
 
 # Coordinates and color of each rectangle
 rects = {(0, 0, 0, 0): 0,
-              (0, 1, 1, 1): 4,
-              (0, 2, 2, 3): 1,
-              (0, 4, 0, 4): 3,
-              (0, 5, 2, 7): 0,
-              (0, 8, 2, 8): 5,
-              (1, 0, 1, 0): 3,
-              (1, 4, 2, 4): 0,
-              (2, 0, 3, 0): 0,
-              (2, 1, 2, 1): 0,
-              (3, 1, 3, 2): 2,
-              (3, 3, 3, 3): 0,
-              (3, 4, 4, 6): 1,
-              (3, 7, 3, 7): 3,
-              (3, 8, 3, 8): 6,
-              (4, 0, 4, 1): 0,
-              (4, 2, 4, 2): 0,
-              (4, 3, 5, 3): 3,
-              (4, 7, 4, 7): 2,
-              (4, 8, 4, 8): 0,
-              (5, 0, 7, 1): 0,
-              (5, 2, 7, 2): 6,
-              (5, 4, 6, 5): 5,
-              (5, 6, 6, 7): 4,
-              (5, 8, 5, 8): 2,
-              (6, 3, 6, 3): 0,
-              (6, 8, 7, 8): 0,
-              (7, 3, 7, 4): 4,
-              (7, 5, 8, 5): 2,
-              (7, 6, 7, 7): 5,
-              (8, 0, 10, 1): 5,
-              (8, 2, 9, 2): 0,
-              (8, 3, 10, 4): 0,
-              (8, 6, 8, 6): 0,
-              (8, 7, 10, 8): 1,
-              (9, 5, 9, 5): 3,
-              (9, 6, 10, 6): 2,
-              (10, 2, 10, 2): 3,
-              (10, 5, 10, 5): 0}
+         (0, 1, 1, 1): 4,
+         (0, 2, 2, 3): 1,
+         (0, 4, 0, 4): 3,
+         (0, 5, 2, 7): 0,
+         (0, 8, 2, 8): 5,
+         (1, 0, 1, 0): 3,
+         (1, 4, 2, 4): 0,
+         (2, 0, 3, 0): 0,
+         (2, 1, 2, 1): 0,
+         (3, 1, 3, 2): 2,
+         (3, 3, 3, 3): 0,
+         (3, 4, 4, 6): 1,
+         (3, 7, 3, 7): 3,
+         (3, 8, 3, 8): 6,
+         (4, 0, 4, 1): 0,
+         (4, 2, 4, 2): 0,
+         (4, 3, 5, 3): 3,
+         (4, 7, 4, 7): 2,
+         (4, 8, 4, 8): 0,
+         (5, 0, 7, 1): 0,
+         (5, 2, 7, 2): 6,
+         (5, 4, 6, 5): 5,
+         (5, 6, 6, 7): 4,
+         (5, 8, 5, 8): 2,
+         (6, 3, 6, 3): 0,
+         (6, 8, 7, 8): 0,
+         (7, 3, 7, 4): 4,
+         (7, 5, 8, 5): 2,
+         (7, 6, 7, 7): 5,
+         (8, 0, 10, 1): 5,
+         (8, 2, 9, 2): 0,
+         (8, 3, 10, 4): 0,
+         (8, 6, 8, 6): 0,
+         (8, 7, 10, 8): 1,
+         (9, 5, 9, 5): 3,
+         (9, 6, 10, 6): 2,
+         (10, 2, 10, 2): 3,
+         (10, 5, 10, 5): 0}
 
-
-def compute_bool_map():
-    bool_map = np.ones((n_colors, n_rows, n_cols), dtype=bool)
-    
+def update_bool_map(bool_map, rects):   
     # No square can have two colors, and no two squares on the same
     # row or column can have the same color
     for rect, color in rects.items():
@@ -83,33 +81,37 @@ def compute_bool_map():
                     bool_map[color_index, row_min:row_max+1, col_min:col_max+1] = False
     return bool_map
 
-def find_rect(row, col):
+def xy2rect(row, col):
     for rect in rects.keys():
         row_min, col_min, row_max, col_max = rect
         if row >=row_min and row <= row_max and col >= col_min and col <= col_max:
             return rect
 
-def add_rect():
+def find_new_rect():
     bool_map_sum = np.sum(bool_map, axis=0)
     for row in range(n_rows):
         for col in range(n_cols):
             if bool_map_sum[row, col] == 1:
                 for color_index in range(n_colors):
                     if bool_map[color_index, row, col]:
-                        rects[find_rect(row, col)] = color_index + 1
-                        return
+                        new_rect = xy2rect(row, col)
+                        rects[new_rect] = color_index + 1
+                        return {new_rect: color_index + 1}
     
-def print_solution():
-   board = np.zeros((n_rows, n_cols))
+def compute_solution():
+   solution = np.zeros((n_rows, n_cols))
    for rect, color in rects.items():
        row_min, col_min, row_max, col_max = rect
-       board[row_min:row_max+1, col_min:col_max+1] = color
-   print(board)
-    
-bool_map = compute_bool_map()
+       solution[row_min:row_max+1, col_min:col_max+1] = color
+   return solution
 
+bool_map = np.ones((n_colors, n_rows, n_cols), dtype=bool)
+bool_map = update_bool_map(bool_map, rects)
+
+iteration = 1
 while True in bool_map:
-    add_rect()
-    bool_map = compute_bool_map()
+    print(f"Iteration: {iteration}")
+    bool_map = update_bool_map(bool_map, find_new_rect())
+    iteration += 1
 
-print_solution()
+print(f"\nSolution:\n{compute_solution()}")
